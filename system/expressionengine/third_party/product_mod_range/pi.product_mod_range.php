@@ -12,7 +12,7 @@
 
 $plugin_info = array(
 	'pi_name'        => 'Store Product Modifiers Range',
-	'pi_version'     => '1.0',
+	'pi_version'     => '1.1',
 	'pi_author'      => 'Jason Varga',
 	'pi_author_url'  => 'http://pixelfear.com',
 	'pi_description' => 'Display ranges of price modifiers for Exp:resso Store products',
@@ -24,15 +24,18 @@ class Product_mod_range {
 
 	public $return_data = '';
 	protected $mod_sums = array();
-    
+	protected $config;
+
 	/**
 	 * Constructor
 	 */
 	public function __construct()
 	{
+		$this->getConfig();
+
 		// Base price?
 		$base_price = ee()->TMPL->fetch_param('base_price', 0);
-		$base_price = preg_replace('/[\$,]/', '', $base_price);
+		$base_price = $this->normalizeCurrency($base_price);
 
 		// Get entry
 		$entry_id = ee()->TMPL->fetch_param('entry_id');
@@ -47,7 +50,7 @@ class Product_mod_range {
 		{
 			$mod_ids[] = $mod['product_mod_id'];
 		}
-		
+
 		// Product has no mods? Bail out.
 		if (count($mod_ids) == 0)
 		{
@@ -59,7 +62,7 @@ class Product_mod_range {
 		// Has mods? Keep going.
 		else
 		{
-		
+
 			// Get option modifier prices and put them into modifier groups
 			$opts_query = ee()->db->where_in('product_mod_id', $mod_ids)
 			                      ->get('store_product_options');
@@ -67,7 +70,7 @@ class Product_mod_range {
 			$mod_groups = array();
 			foreach ($opts_query->result_array() as $option)
 			{
-				$mod_price = isset($option['opt_price_mod']) 
+				$mod_price = isset($option['opt_price_mod'])
 				             ? floatval($option['opt_price_mod'])
 				             : 0;
 				$mod_groups[$option['product_mod_id']][] = $mod_price;
@@ -83,10 +86,10 @@ class Product_mod_range {
 			}
 
 			// Vars
-			$max = number_format(max($this->mod_sums) + $base_price, 2);
-			$min = number_format(min($this->mod_sums) + $base_price, 2);
+			$max = $this->formatCurrency(max($this->mod_sums) + $base_price);
+			$min = $this->formatCurrency(min($this->mod_sums) + $base_price);
 			$has_mods = true;
-		
+
 		}
 
 		$vars = array(array(
@@ -99,6 +102,7 @@ class Product_mod_range {
 
 		$this->return_data = ee()->TMPL->parse_variables(ee()->TMPL->tagdata, $vars);
 	}
+
 
 	private function cartesian_product()
 	{
@@ -113,9 +117,39 @@ class Product_mod_range {
 				$r[] = array_merge(array($v), $p);
 		return $r;
 	}
-	
+
+
+	private function getConfig()
+	{
+		$settings = ee()->db->get('store_config')->result_array();
+		foreach ($settings as $s) {
+			$this->config[$s['preference']] = str_replace('"', '', $s['value']);
+		}
+	}
+
+
+	private function normalizeCurrency($price)
+	{
+		$c = $this->config;
+
+		$price = (string) $price;
+		$price = ltrim($price, $c['store_currency_symbol']);
+		$price = rtrim($price, $c['store_currency_suffix']);
+		$price = str_replace($c['store_currency_thousands_sep'], '', $price);
+		$price = str_replace($c['store_currency_dec_point'], '.', $price);
+
+		return $price;
+	}
+
+
+	private function formatCurrency($price)
+	{
+		$c = $this->config;
+		return number_format($price, $c['store_currency_decimals'], $c['store_currency_dec_point'], $c['store_currency_thousands_sep']);
+	}
+
 	// ----------------------------------------------------------------
-	
+
 	/**
 	 * Plugin Usage
 	 */

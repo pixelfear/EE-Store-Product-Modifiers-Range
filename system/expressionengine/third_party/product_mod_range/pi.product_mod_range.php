@@ -86,8 +86,8 @@ class Product_mod_range {
 			}
 
 			// Vars
-			$max = $this->formatCurrency(max($this->mod_sums) + $base_price);
-			$min = $this->formatCurrency(min($this->mod_sums) + $base_price);
+			$max = max($this->mod_sums) + $base_price;
+			$min = min($this->mod_sums) + $base_price;
 			$has_mods = true;
 
 		}
@@ -95,9 +95,9 @@ class Product_mod_range {
 		$vars = array(array(
 			'has_mods'   => $has_mods,
 			'no_mods'    => !$has_mods,
-			'max'        => $max,
-			'min'        => $min,
-			'base_price' => $base_price
+			'max'        => $this->formatCurrency($max),
+			'min'        => $this->formatCurrency($min),
+			'base_price' => $this->formatCurrency($base_price)
 		));
 
 		$this->return_data = ee()->TMPL->parse_variables(ee()->TMPL->tagdata, $vars);
@@ -125,6 +125,11 @@ class Product_mod_range {
 		foreach ($settings as $s) {
 			$this->config[$s['preference']] = str_replace('"', '', $s['value']);
 		}
+
+		// euro is saved as encoded
+		if (strpos($this->config['store_currency_symbol'], '\u20ac') === 0) {
+			$this->config['store_currency_symbol'] = '€';
+		}
 	}
 
 
@@ -133,10 +138,9 @@ class Product_mod_range {
 		$c = $this->config;
 
 		$price = (string) $price;
-		$price = ltrim($price, $c['store_currency_symbol']);
-		$price = rtrim($price, $c['store_currency_suffix']);
 		$price = str_replace($c['store_currency_thousands_sep'], '', $price);
 		$price = str_replace($c['store_currency_dec_point'], '.', $price);
+		$price = (float) preg_replace("/[^0-9,.]/", '', $price);
 
 		return $price;
 	}
@@ -145,7 +149,7 @@ class Product_mod_range {
 	private function formatCurrency($price)
 	{
 		$c = $this->config;
-		return number_format($price, $c['store_currency_decimals'], $c['store_currency_dec_point'], $c['store_currency_thousands_sep']);
+		return number_format($price, $c['store_currency_decimals'], $c['store_currency_dec_point'], $c['store_currency_thousands_sep'] );
 	}
 
 	// ----------------------------------------------------------------

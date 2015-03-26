@@ -85,4 +85,4 @@ $10.00
 
 Please open a Github Issue for support.
 
-https://github.com/pixelfear/store-product-modifiers-range/issues
+https://github.com/pixelfear/EE-Store-Product-Modifiers-Range/issues
